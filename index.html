@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCO Monitoring Dashboard</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #1a1f3a 0%, #16213e 100%);
+      color: white;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+
+    .header-icon {
+      width: 34px;
+      height: 34px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .header-clock {
+      margin-left: auto;
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Main layout ── */
+    .main {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 22px 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 0 1px rgba(0,0,0,0.04);
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b8fa8;
+      margin-bottom: 16px;
+    }
+
+    /* ── Store grid ── */
+    .store-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .store-card {
+      border: 2px solid #e8eaed;
+      border-radius: 10px;
+      padding: 16px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: #fafbfc;
+      transition: border-color 0.18s, background 0.18s, transform 0.12s;
+    }
+
+    .store-card:hover {
+      border-color: #4f46e5;
+      background: #fafbff;
+      transform: translateY(-1px);
+    }
+
+    .store-card.selected {
+      border-color: #4f46e5;
+      background: #f0f0ff;
+    }
+
+    .store-info .store-name {
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .store-info .store-meta {
+      font-size: 12px;
+      color: #888;
+      margin-top: 3px;
+    }
+
+    /* ── Status dots ── */
+    .dot {
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+
+    .dot-sm  { width: 10px; height: 10px; }
+    .dot-md  { width: 14px; height: 14px; }
+    .dot-lg  { width: 20px; height: 20px; }
+
+    .dot-green {
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34,197,94,0.18);
+    }
+
+    .dot-yellow {
+      background: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.18);
+    }
+
+    .dot-red {
+      background: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239,68,68,0.18);
+      animation: pulse-red 1.6s ease-in-out infinite;
+    }
+
+    @keyframes pulse-red {
+      0%,100% { box-shadow: 0 0 0 3px rgba(239,68,68,0.18); }
+      50%      { box-shadow: 0 0 0 7px rgba(239,68,68,0.06); }
+    }
+
+    /* ── SCO table ── */
+    .sco-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .sco-table thead th {
+      padding: 10px 14px;
+      background: #f7f8fa;
+      font-size: 11px;
+      font-weight: 700;
+      color: #8b8fa8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #eaecef;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .sco-table thead th.c { text-align: center; }
+    .sco-table thead th:first-child { border-radius: 8px 0 0 0; }
+    .sco-table thead th:last-child  { border-radius: 0 8px 0 0; }
+
+    .sco-table tbody tr { transition: background 0.12s; }
+    .sco-table tbody tr:hover { background: #fafbfc; }
+
+    .sco-table tbody td {
+      padding: 13px 14px;
+      border-bottom: 1px solid #f0f2f4;
+      vertical-align: middle;
+    }
+
+    .sco-table tbody tr:last-child td { border-bottom: none; }
+    .sco-table td.c { text-align: center; }
+
+    .sco-label {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 11px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.14s;
+      white-space: nowrap;
+    }
+
+    .btn:active { transform: scale(0.96); }
+
+    .btn-fail {
+      background: #fff1f1;
+      color: #dc2626;
+      border-color: #fecaca;
+    }
+    .btn-fail:hover { background: #fee2e2; border-color: #fca5a5; }
+
+    .btn-recover {
+      background: #f0fdf4;
+      color: #16a34a;
+      border-color: #bbf7d0;
+      margin-left: 6px;
+    }
+    .btn-recover:hover { background: #dcfce7; border-color: #86efac; }
+
+    /* ── Detail header ── */
+    .detail-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .detail-store-name {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .divider-v {
+      width: 1px;
+      height: 16px;
+      background: #dde0e6;
+    }
+
+    /* ── Floating alert container ── */
+    #alert-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 320px;
+      pointer-events: none;
+    }
+
+    /* ── Alert box ── */
+    .alert-box {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #fecaca;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07);
+      pointer-events: all;
+      animation: alert-in 0.36s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    .alert-box.dismissing {
+      animation: alert-out 0.22s ease forwards;
+    }
+
+    @keyframes alert-in {
+      from { transform: translateX(112%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+
+    @keyframes alert-out {
+      to { transform: translateX(112%); opacity: 0; }
+    }
+
+    .alert-top {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .alert-top-title {
+      color: white;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .alert-close-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      line-height: 1;
+      transition: background 0.14s;
+    }
+
+    .alert-close-btn:hover { background: rgba(255,255,255,0.28); }
+
+    .alert-progress-bar {
+      height: 2px;
+      background: #ef4444;
+      transform-origin: left;
+      animation: shrink 8s linear forwards;
+    }
+
+    @keyframes shrink {
+      from { transform: scaleX(1); }
+      to   { transform: scaleX(0); }
+    }
+
+    .alert-body {
+      padding: 12px 14px 10px;
+    }
+
+    .alert-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 3px 0;
+    }
+
+    .alert-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #aaa;
+    }
+
+    .alert-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .alert-footer {
+      background: #fef2f2;
+      padding: 7px 14px;
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      color: #dc2626;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Incident table ── */
+    .incident-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .incident-table thead th {
+      padding: 10px 14px;
+      background: #f7f8fa;
+      font-size: 11px;
+      font-weight: 700;
+      color: #8b8fa8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #eaecef;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .incident-table thead th:first-child { border-radius: 8px 0 0 0; }
+    .incident-table thead th:last-child  { border-radius: 0 8px 0 0; }
+
+    .incident-table tbody tr { transition: background 0.12s; }
+    .incident-table tbody tr:hover { background: #fafbfc; }
+
+    .incident-table tbody td {
+      padding: 11px 14px;
+      border-bottom: 1px solid #f0f2f4;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .incident-table tbody tr:last-child td { border-bottom: none; }
+
+    .inc-id {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: #8b8fa8;
+    }
+
+    .ts {
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: #888;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-open {
+      background: #fff1f1;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    .badge-resolved {
+      background: #f0fdf4;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    .badge-email-yes {
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+    }
+
+    .badge-email-no {
+      background: #f7f8fa;
+      color: #999;
+      border: 1px solid #e0e0e0;
+    }
+
+    /* ── Email Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fade-in 0.2s ease;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .email-modal {
+      background: white;
+      border-radius: 10px;
+      width: 540px;
+      max-width: 92vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      overflow: hidden;
+      animation: modal-in 0.25s ease;
+    }
+
+    @keyframes modal-in {
+      from { transform: translateY(-18px); opacity: 0; }
+      to   { transform: translateY(0);     opacity: 1; }
+    }
+
+    .email-modal-header {
+      background: #f7f8fa;
+      border-bottom: 1px solid #eaecef;
+      padding: 13px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .email-modal-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .email-modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #aaa;
+      font-size: 20px;
+      line-height: 1;
+      padding: 0 2px;
+      transition: color 0.14s;
+    }
+    .email-modal-close:hover { color: #333; }
+
+    .email-meta {
+      padding: 12px 18px;
+      border-bottom: 1px solid #f0f2f4;
+    }
+
+    .email-meta-row {
+      display: flex;
+      gap: 8px;
+      font-size: 13px;
+      padding: 3px 0;
+    }
+
+    .email-meta-row .meta-label {
+      font-weight: 700;
+      color: #999;
+      width: 64px;
+      flex-shrink: 0;
+    }
+
+    .email-meta-row .meta-value {
+      color: #1a1a2e;
+    }
+
+    .email-body {
+      padding: 16px 18px;
+      font-size: 13px;
+      color: #333;
+      line-height: 1.75;
+      background: #fafbfc;
+      border-bottom: 1px solid #f0f2f4;
+    }
+
+    .email-body p { margin-bottom: 10px; }
+    .email-body p:last-child { margin-bottom: 0; }
+
+    .email-body .field-line {
+      display: flex;
+      gap: 6px;
+    }
+
+    .email-body .field-key {
+      color: #888;
+      min-width: 100px;
+    }
+
+    .email-body .field-val {
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .email-modal-footer {
+      background: #f7f8fa;
+      padding: 10px 18px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .btn-close-modal {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 7px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.14s;
+    }
+    .btn-close-modal:hover { background: #4338ca; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      padding: 44px 20px;
+      text-align: center;
+      color: #c0c4d0;
+    }
+
+    .empty-state .empty-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .empty-state .empty-text {
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    </div>
+    <h1>SCO Monitoring Dashboard</h1>
+    <span class="header-clock" id="clock"></span>
+  </header>
+
+  <div class="main">
+
+    <!-- 1. Store Overview -->
+    <div class="card">
+      <div class="card-title">Store Overview</div>
+      <div class="store-grid" id="store-grid"></div>
+    </div>
+
+    <!-- 2. Store Detail -->
+    <div class="card">
+      <div id="store-detail"></div>
+    </div>
+
+    <!-- 4. Incident Log -->
+    <div class="card">
+      <div class="card-title">Incident Log</div>
+      <div id="incident-log"></div>
+    </div>
+
+  </div>
+
+  <!-- 3. Alert container (top-right) -->
+  <div id="alert-container"></div>
+
+  <script>
+    // ─────────────────────────────────────────
+    // Constants
+    // ─────────────────────────────────────────
+    const ISSUE_TYPES  = ['No Transaction', 'No Stream', 'No AI Event', 'No Popup'];
+    const STORE_NAMES  = ['Store A', 'Store B'];
+    const SCO_IDS      = ['SCO-1', 'SCO-2', 'SCO-3'];
+
+    // Issue types that trigger a client email notification
+    const EMAIL_TRIGGER_ISSUES = new Set(['No Transaction', 'No AI Event', 'No Popup']);
+
+    // ─────────────────────────────────────────
+    // State
+    // ─────────────────────────────────────────
+    const state = {
+      selectedStore: 'Store A',
+      stores: {},
+      incidents: [],
+      nextIncNum: 1
+    };
+
+    // Build initial store / SCO data
+    STORE_NAMES.forEach(name => {
+      state.stores[name] = {
+        scos: SCO_IDS.map(id => ({
+          id,
+          // Each issue flag: false = OK (green), true = failing (red)
+          flags: Object.fromEntries(ISSUE_TYPES.map(t => [t, false]))
+        }))
+      };
+    });
+
+    // ─────────────────────────────────────────
+    // Derived status helpers
+    // ─────────────────────────────────────────
+    function getScoStatus(sco) {
+      return Object.values(sco.flags).some(Boolean) ? 'red' : 'green';
+    }
+
+    function getStoreStatus(storeName) {
+      const reds = state.stores[storeName].scos
+        .filter(s => getScoStatus(s) === 'red').length;
+      if (reds === 0) return 'green';
+      if (reds === 1) return 'yellow';   // partial failure → warning
+      return 'red';                       // majority failing → critical
+    }
+
+    function genIncidentId() {
+      return 'INC-' + String(state.nextIncNum++).padStart(4, '0');
+    }
+
+    // Format a Date as YYYY/MM/DD HH:MM:SS
+    function fmtTime(d) {
+      return d.toLocaleString('zh-TW', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      });
+    }
+
+    // Renders a colored dot span
+    function dot(status, size) {
+      return `<span class="dot dot-${size} dot-${status}"></span>`;
+    }
+
+    // ─────────────────────────────────────────
+    // Actions
+    // ─────────────────────────────────────────
+    function selectStore(storeName) {
+      state.selectedStore = storeName;
+      render();
+    }
+
+    function simulateFailure(storeName, scoId) {
+      const sco = state.stores[storeName].scos.find(s => s.id === scoId);
+
+      // Prefer an issue not yet active; fall back to any random issue
+      const available = ISSUE_TYPES.filter(t => !sco.flags[t]);
+      const pool = available.length > 0 ? available : ISSUE_TYPES;
+      const issueType = pool[Math.floor(Math.random() * pool.length)];
+
+      sco.flags[issueType] = true;
+
+      const incidentId = genIncidentId();
+      const now = new Date();
+      const emailSent = EMAIL_TRIGGER_ISSUES.has(issueType);
+      state.incidents.unshift({
+        id: incidentId,
+        store: storeName,
+        sco: scoId,
+        issue: issueType,
+        status: 'Open',
+        createdAt: now,
+        updatedAt: now,
+        emailSent
+      });
+
+      showAlert(incidentId, storeName, scoId, issueType);
+      if (emailSent) showEmailModal('alert', storeName, scoId, issueType, incidentId);
+      render();
+    }
+
+    function recover(storeName, scoId) {
+      const sco = state.stores[storeName].scos.find(s => s.id === scoId);
+      // Clear all active issue flags
+      ISSUE_TYPES.forEach(t => { sco.flags[t] = false; });
+      // Resolve all open incidents for this SCO; capture the first email-sent one
+      let emailInc = null;
+      state.incidents.forEach(inc => {
+        if (inc.store === storeName && inc.sco === scoId && inc.status === 'Open') {
+          inc.status = 'Resolved';
+          inc.updatedAt = new Date();
+          if (inc.emailSent && !emailInc) emailInc = inc;
+        }
+      });
+      render();
+      if (emailInc) showEmailModal('recovery', storeName, scoId, emailInc.issue, emailInc.id);
+    }
+
+    // ─────────────────────────────────────────
+    // Alert
+    // ─────────────────────────────────────────
+    function showAlert(incidentId, storeName, scoId, issueType) {
+      const container = document.getElementById('alert-container');
+      const alertId = 'alert-' + incidentId;
+
+      const el = document.createElement('div');
+      el.className = 'alert-box';
+      el.id = alertId;
+      el.innerHTML = `
+        <div class="alert-top">
+          <div class="alert-top-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10
+                       10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+            Critical Alert
+          </div>
+          <button class="alert-close-btn" onclick="dismissAlert('${alertId}')">×</button>
+        </div>
+        <div class="alert-progress-bar"></div>
+        <div class="alert-body">
+          <div class="alert-row">
+            <span class="alert-label">Store</span>
+            <span class="alert-value">${storeName}</span>
+          </div>
+          <div class="alert-row">
+            <span class="alert-label">SCO</span>
+            <span class="alert-value">${scoId}</span>
+          </div>
+          <div class="alert-row">
+            <span class="alert-label">Issue</span>
+            <span class="alert-value">${issueType}</span>
+          </div>
+        </div>
+        <div class="alert-footer">Incident ID: ${incidentId}</div>
+      `;
+
+      container.appendChild(el);
+
+      // Auto-dismiss after 8 s (matches progress bar animation)
+      setTimeout(() => dismissAlert(alertId), 8000);
+    }
+
+    function dismissAlert(alertId) {
+      const el = document.getElementById(alertId);
+      if (!el) return;
+      el.classList.add('dismissing');
+      setTimeout(() => el.remove(), 220);
+    }
+
+    // ─────────────────────────────────────────
+    // Email Modal
+    // ─────────────────────────────────────────
+    function showEmailModal(type, storeName, scoId, issueType, incidentId) {
+      const isAlert = type === 'alert';
+      const time = fmtTime(new Date());
+
+      const subject = isAlert
+        ? `[Critical Alert] ${storeName} – ${scoId} – ${issueType}`
+        : `[Resolved] ${storeName} – ${scoId} – ${issueType}`;
+
+      const bodyHTML = isAlert ? `
+        <p>Dear Client,</p>
+        <p>We detected a critical issue at:</p>
+        <p>
+          <span class="field-line"><span class="field-key">Store:</span><span class="field-val">${storeName}</span></span>
+          <span class="field-line"><span class="field-key">SCO:</span><span class="field-val">${scoId}</span></span>
+        </p>
+        <p>
+          <span class="field-line"><span class="field-key">Issue:</span><span class="field-val">${issueType}</span></span>
+          <span class="field-line"><span class="field-key">Detected at:</span><span class="field-val">${time}</span></span>
+        </p>
+        <p><strong>Recommended Action:</strong><br>Please check your system and network connection.</p>
+        <p>
+          <span class="field-line"><span class="field-key">Incident ID:</span><span class="field-val">${incidentId}</span></span>
+        </p>
+        <p style="color:#888;font-size:12px">This is an automated notification.</p>
+      ` : `
+        <p>Dear Client,</p>
+        <p>The previously reported issue has been resolved.</p>
+        <p>
+          <span class="field-line"><span class="field-key">Store:</span><span class="field-val">${storeName}</span></span>
+          <span class="field-line"><span class="field-key">SCO:</span><span class="field-val">${scoId}</span></span>
+          <span class="field-line"><span class="field-key">Issue:</span><span class="field-val">${issueType}</span></span>
+          <span class="field-line"><span class="field-key">Resolved at:</span><span class="field-val">${time}</span></span>
+        </p>
+        <p>Thank you.</p>
+        <p style="color:#888;font-size:12px">This is an automated notification.</p>
+      `;
+
+      const headerColor = isAlert ? '#dc2626' : '#16a34a';
+      const headerLabel = isAlert ? 'Critical Alert Notification' : 'Recovery Notification';
+      const iconPath    = isAlert
+        ? 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z'
+        : 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z';
+
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.id = 'email-modal-overlay';
+      overlay.innerHTML = `
+        <div class="email-modal">
+          <div class="email-modal-header">
+            <div class="email-modal-title" style="color:${headerColor}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <path d="${iconPath}"/>
+              </svg>
+              Email Preview — ${headerLabel}
+            </div>
+            <button class="email-modal-close" onclick="closeEmailModal()">×</button>
+          </div>
+          <div class="email-meta">
+            <div class="email-meta-row">
+              <span class="meta-label">To:</span>
+              <span class="meta-value">client@example.com</span>
+            </div>
+            <div class="email-meta-row">
+              <span class="meta-label">Subject:</span>
+              <span class="meta-value" style="font-weight:600">${subject}</span>
+            </div>
+          </div>
+          <div class="email-body">${bodyHTML}</div>
+          <div class="email-modal-footer">
+            <button class="btn-close-modal" onclick="closeEmailModal()">Close</button>
+          </div>
+        </div>
+      `;
+
+      overlay.addEventListener('click', e => { if (e.target === overlay) closeEmailModal(); });
+      document.body.appendChild(overlay);
+    }
+
+    function closeEmailModal() {
+      const el = document.getElementById('email-modal-overlay');
+      if (el) el.remove();
+    }
+
+    // ─────────────────────────────────────────
+    // Render functions
+    // ─────────────────────────────────────────
+    function renderStoreGrid() {
+      const container = document.getElementById('store-grid');
+      container.innerHTML = STORE_NAMES.map(name => {
+        const status   = getStoreStatus(name);
+        const scos     = state.stores[name].scos;
+        const redCount = scos.filter(s => getScoStatus(s) === 'red').length;
+        const meta     = redCount === 0
+          ? 'All systems operational'
+          : `${redCount} of ${scos.length} SCO(s) in alert`;
+
+        return `
+          <div class="store-card ${state.selectedStore === name ? 'selected' : ''}"
+               onclick="selectStore('${name}')">
+            ${dot(status, 'lg')}
+            <div class="store-info">
+              <div class="store-name">${name}</div>
+              <div class="store-meta">${meta}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderStoreDetail() {
+      const container = document.getElementById('store-detail');
+      const storeName = state.selectedStore;
+      const scos      = state.stores[storeName].scos;
+
+      const rows = scos.map(sco => {
+        const overall = getScoStatus(sco);
+        const flagDots = ISSUE_TYPES.map(t =>
+          `<td class="c">${dot(sco.flags[t] ? 'red' : 'green', 'sm')}</td>`
+        ).join('');
+
+        return `
+          <tr>
+            <td><span class="sco-label">${sco.id}</span></td>
+            <td class="c">${dot(overall, 'md')}</td>
+            ${flagDots}
+            <td>
+              <button class="btn btn-fail"
+                      onclick="simulateFailure('${storeName}','${sco.id}')">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                </svg>
+                Simulate Failure
+              </button>
+              <button class="btn btn-recover"
+                      onclick="recover('${storeName}','${sco.id}')">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                Recover
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="detail-header">
+          <div class="card-title" style="margin-bottom:0">Store Detail</div>
+          <div class="divider-v"></div>
+          <div class="detail-store-name">${storeName}</div>
+          ${dot(getStoreStatus(storeName), 'md')}
+        </div>
+        <table class="sco-table">
+          <thead>
+            <tr>
+              <th>SCO</th>
+              <th class="c">Overall</th>
+              ${ISSUE_TYPES.map(t => `<th class="c">${t}</th>`).join('')}
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function renderIncidentLog() {
+      const container = document.getElementById('incident-log');
+
+      if (state.incidents.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div class="empty-text">No incidents recorded yet</div>
+          </div>
+        `;
+        return;
+      }
+
+      const rows = state.incidents.map(inc => `
+        <tr>
+          <td><span class="inc-id">${inc.id}</span></td>
+          <td>${inc.store}</td>
+          <td>${inc.sco}</td>
+          <td>${inc.issue}</td>
+          <td>
+            <span class="badge badge-${inc.status === 'Open' ? 'open' : 'resolved'}">
+              ${inc.status === 'Open'
+                ? '<svg width="7" height="7" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>'
+                : '<svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>'
+              }
+              ${inc.status}
+            </span>
+          </td>
+          <td class="ts">${fmtTime(inc.createdAt)}</td>
+          <td class="ts">${fmtTime(inc.updatedAt)}</td>
+          <td>
+            ${inc.emailSent
+              ? '<span class="badge badge-email-yes">Yes</span>'
+              : '<span class="badge badge-email-no">Internal Only</span>'
+            }
+          </td>
+        </tr>
+      `).join('');
+
+      container.innerHTML = `
+        <table class="incident-table">
+          <thead>
+            <tr>
+              <th>Incident ID</th>
+              <th>Store</th>
+              <th>SCO</th>
+              <th>Issue</th>
+              <th>Status</th>
+              <th>Create Time</th>
+              <th>Last Updated</th>
+              <th>Client Email Sent</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    // ─────────────────────────────────────────
+    // Master render
+    // ─────────────────────────────────────────
+    function render() {
+      renderStoreGrid();
+      renderStoreDetail();
+      renderIncidentLog();
+    }
+
+    // ─────────────────────────────────────────
+    // Live clock
+    // ─────────────────────────────────────────
+    function tickClock() {
+      const el = document.getElementById('clock');
+      if (el) el.textContent = new Date().toLocaleTimeString();
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // ─────────────────────────────────────────
+    // Boot
+    // ─────────────────────────────────────────
+    render();
+  </script>
+</body>
+</html>
